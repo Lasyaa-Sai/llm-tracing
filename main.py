@@ -1,25 +1,33 @@
+import os
 import asyncio
-from dotenv import load_dotenv
-from pathlib import Path
-load_dotenv(dotenv_path=Path(__file__).parent / ".env")
-
-from agents import Agent, Runner
 from app.tracing.client_telemetry import TracingClient
+from agents import Agent, Runner
 
 async def start_app():
     client = TracingClient()
     
     if client.enabled:
         client.instrument()
-        print(" OTel Instrumentation active")
+        print("OTel Instrumentation active")
 
-    agent = Agent(
-        name="test-agent",
-        instructions="You are a helpful assistant.",
-    )
+    if client.enabled:
+        with client.start_span(name="agent-run") as span:
+            try:
+                agent = Agent(
+                    name="test-agent",
+                    instructions="You are a helpful assistant.",
+                )
+                result = await Runner.run(agent, "Say Hello in a sentence")
+                span.update(output=result.final_output)
+                print(result.final_output)
 
-    result = await Runner.run(agent, "Say Hello in a sentence,Tell me interesting facts about earth")
-    print(result.final_output)
+            except Exception as exc:
+                span.update(
+                    level="ERROR",
+                    status_message=str(exc),
+                )
+                span.record_exception(exc)
+                print(f"Error captured in span: {exc}")
 
     await client.async_shutdown()
 

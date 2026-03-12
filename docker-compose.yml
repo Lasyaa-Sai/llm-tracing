@@ -1,0 +1,24 @@
+services:
+  setup:
+    image: alpine:latest
+    env_file:
+      - .env
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./.env:/app/.env
+    command: >
+      sh -c "echo LANGFUSE_AUTH=$$(echo -n $${LANGFUSE_PUBLIC_KEY}:$${LANGFUSE_SECRET_KEY} | base64) >> /app/.env"
+
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    depends_on:
+      - setup
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+    env_file:
+      - .env
+    environment:
+      - LANGFUSE_HOST=${LANGFUSE_HOST}
+      - LANGFUSE_AUTH=${LANGFUSE_AUTH}
+    ports:
+      - "4318:4318"

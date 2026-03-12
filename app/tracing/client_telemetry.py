@@ -23,15 +23,9 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import NonRecordingSpan, Span, StatusCode
-from app.config.globals import LANGFUSE_ENABLED,LANGFUSE_PUBLIC_KEY,LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL   
-from app.core.logging import logger       
-from app.core.singleton import SingletonMeta  
-from app.config.globals import (
-    LANGFUSE_BASE_URL,
-    LANGFUSE_ENABLED,
-    LANGFUSE_PUBLIC_KEY,
-    LANGFUSE_SECRET_KEY,
-)
+from app.config.globals import LANGFUSE_ENABLED
+from app.core.logging import logger
+from app.core.singleton import SingletonMeta
 from app.core.logging import logger
 from app.core.singleton import SingletonMeta
 
@@ -161,30 +155,17 @@ class TracingClient(metaclass=SingletonMeta):
             logger.info("Tracing disabled (LANGFUSE_ENABLED=false)")
             return
 
-        if not LANGFUSE_PUBLIC_KEY or not LANGFUSE_SECRET_KEY:
-            logger.warning("Langfuse keys are empty — tracing disabled")
-            return
-
         try:
-            auth_string = base64.b64encode(
-                f"{LANGFUSE_PUBLIC_KEY}:{LANGFUSE_SECRET_KEY}".encode()
-            ).decode()
-
-        
-            # Reference: https://langfuse.com/integrations/native/opentelemetry
-            endpoint = f"{LANGFUSE_BASE_URL.rstrip('/')}/api/public/otel/v1/traces"
-
             exporter = OTLPSpanExporter(
-                endpoint=endpoint,
-                headers={"Authorization": f"Basic {auth_string}"},
-            )
+    endpoint="http://localhost:4318/v1/traces",
+)
 
             self._provider = TracerProvider()
             self._provider.add_span_processor(BatchSpanProcessor(exporter))
             trace.set_tracer_provider(self._provider)
 
             self._tracer = trace.get_tracer(__name__)
-            logger.info("OTel → Langfuse tracing initialised (%s)", endpoint)
+            logger.info("OTel → Fluent Bit tracing initialised")
 
         except ImportError:
             logger.warning(
