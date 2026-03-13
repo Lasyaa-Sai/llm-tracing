@@ -1,13 +1,3 @@
-"""Singleton tracing client — backed by pure OpenTelemetry, exporting to Langfuse.
-
-This module is the only place that configures the OTel SDK.  The rest of the
-codebase is completely decoupled from both langfuse and opentelemetry-sdk;
-it only calls the public interface of this class.
-
-Langfuse OTLP endpoint:  <LANGFUSE_BASE_URL>/api/public/otel/v1/traces
-Auth:                    HTTP Basic  (base64(public_key:secret_key))
-Docs:                    https://langfuse.com/integrations/native/opentelemetry
-"""
 
 from __future__ import annotations
 
@@ -26,8 +16,7 @@ from opentelemetry.trace import NonRecordingSpan, Span, StatusCode
 from app.config.globals import LANGFUSE_ENABLED
 from app.core.logging import logger
 from app.core.singleton import SingletonMeta
-from app.core.logging import logger
-from app.core.singleton import SingletonMeta
+
 
 class _SpanWrapper:
     """Thin wrapper around an OTel Span that mirrors the subset of the
@@ -94,7 +83,6 @@ class _SpanWrapper:
             span.set_attribute("gen_ai.usage.output_tokens", output_tokens)
 
 
-
     def update_trace(
         self,
         *,
@@ -136,14 +124,8 @@ class _SpanWrapper:
 
 
 class TracingClient(metaclass=SingletonMeta):
-    """Application-wide tracing client backed by pure OpenTelemetry.
-
-    Exports spans to Langfuse via its OTLP HTTP endpoint.  All OTel SDK
-    imports are confined to this module so the rest of the codebase remains
-    decoupled from both langfuse and opentelemetry-sdk.
-
-    Callers **must** check :attr:`enabled` before calling any observation
-    methods, as those require an active TracerProvider.
+    """Exports spans to Fluent Bit via OTLP HTTP (localhost:4318).
+Fluent Bit handles forwarding to Langfuse.
     """
 
     def __init__(self) -> None:
@@ -251,12 +233,11 @@ class TracingClient(metaclass=SingletonMeta):
         """
         assert self._tracer is not None
         with self._tracer.start_as_current_span(name) as span:
-            # Mark this span as a generation so Langfuse renders it correctly
+            
             span.set_attribute("langfuse.observation.type", "generation")
             span.set_attribute("gen_ai.operation.name", "chat")
 
             if model:
-                # Both attributes are in Langfuse's mapping table
                 span.set_attribute("gen_ai.request.model", model)
                 span.set_attribute("langfuse.observation.model.name", model)
 
