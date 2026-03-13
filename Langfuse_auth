@@ -1,0 +1,7 @@
+$public = (Get-Content .env | Where-Object { $_ -match "^LANGFUSE_PUBLIC_KEY=" }) -replace "^LANGFUSE_PUBLIC_KEY=", ""
+$secret = (Get-Content .env | Where-Object { $_ -match "^LANGFUSE_SECRET_KEY=" }) -replace "^LANGFUSE_SECRET_KEY=", ""
+$encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$public`:$secret"))
+$envContent = Get-Content .env | Where-Object { $_ -notmatch "^LANGFUSE_AUTH=" }
+$envContent += "LANGFUSE_AUTH=$encoded"
+$envContent | Set-Content .env
+Write-Host " LANGFUSE_AUTH saved to .env"
